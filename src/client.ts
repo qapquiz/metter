@@ -1,8 +1,10 @@
 import type { ZodType } from 'zod';
 import type {
 	GetOpenPortfolioParams,
+	GetPositionPnlParams,
 	MeteoraDlmmClientOptions,
 	OpenPortfolio,
+	PositionPnl,
 } from './types';
 import type { MeteoraApiError as MeteoraApiErrorType } from './errors';
 import { MeteoraApiError as MeteoraApiErrorClass } from './errors';
@@ -10,7 +12,7 @@ import {
 	DEFAULT_TIMEOUT_MS,
 	METEORA_DLMM_MAINNET_URL,
 } from './constants';
-import { OpenPortfolioSchema } from './types';
+import { OpenPortfolioSchema, PositionPnlSchema } from './types';
 
 /** Client for the Meteora DLMM REST API. */
 export class MeteoraDlmmClient {
@@ -38,6 +40,28 @@ export class MeteoraDlmmClient {
 
 		const url = this.buildUrl('/portfolio/open', toPortfolioQuery(params));
 		return this.request(url, OpenPortfolioSchema);
+	}
+
+	/**
+	 * Get a user's positions in a specific pool with calculated PnL (open and/or closed).
+	 *
+	 * @param poolAddress - The pool (LB pair) address. URL-encoded automatically.
+	 * @param params - Query params; `user` is required.
+	 * @throws {MeteoraApiError} on a non-2xx HTTP response (e.g. invalid `user` → 400).
+	 * @throws {ZodError} (from `zod`) when a 2xx response body does not match the expected schema.
+	 * @throws {TypeError} when `poolAddress` or `params.user` is missing/empty (before any network call).
+	 */
+	async getPositionPnl(poolAddress: string, params: GetPositionPnlParams): Promise<PositionPnl> {
+		if (typeof poolAddress !== 'string' || poolAddress.length === 0) {
+			throw new TypeError('getPositionPnl requires a non-empty "poolAddress".');
+		}
+		if (typeof params?.user !== 'string' || params.user.length === 0) {
+			throw new TypeError('getPositionPnl requires a non-empty "user" wallet address.');
+		}
+
+		const path = `/positions/${encodeURIComponent(poolAddress)}/pnl`;
+		const url = this.buildUrl(path, toPositionPnlQuery(params));
+		return this.request(url, PositionPnlSchema);
 	}
 
 	private buildUrl(path: string, query: URLSearchParams): string {
@@ -70,6 +94,16 @@ function toPortfolioQuery(params: GetOpenPortfolioParams): URLSearchParams {
 	if (params.pageSize !== undefined) query.set('page_size', String(params.pageSize));
 	if (params.sortBy !== undefined) query.set('sort_by', params.sortBy);
 	if (params.sortDirection !== undefined) query.set('sort_direction', params.sortDirection);
+	return query;
+}
+
+/** Maps camelCase client params to the API's snake_case query parameters for /positions/{pool}/pnl. */
+function toPositionPnlQuery(params: GetPositionPnlParams): URLSearchParams {
+	const query = new URLSearchParams();
+	query.set('user', params.user);
+	if (params.status !== undefined) query.set('status', params.status);
+	if (params.page !== undefined) query.set('page', String(params.page));
+	if (params.pageSize !== undefined) query.set('page_size', String(params.pageSize));
 	return query;
 }
 
