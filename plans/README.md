@@ -9,6 +9,7 @@ honor its STOP conditions, and update your row when done.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 001  | Meteora DLMM API wrapper — `GET /portfolio/open` (Zod-validated) | P1 | M | — | DONE (reviewed/approved) |
+| 002  | `getPositionPnl` — `GET /positions/{pool_address}/pnl` (Zod-validated) | P1 | S–M | 001 | TODO |
 
 ## Dependency notes
 
@@ -16,6 +17,10 @@ honor its STOP conditions, and update your row when done.
   wrapper library and is the prerequisite for any future-endpoint plans
   (the `src/client.ts` `request<T>` helper is the extension point later plans
   will build on).
+- 002 depends on 001 (DONE): it reuses 001's `MeteoraDlmmClient`, the
+  `request<T>(url, schema)` / `buildUrl(path, query)` helpers, and the
+  `z.ZodType<T>` schema conventions unchanged — purely additive (new types,
+  one new method, new tests). No edits to 001's logic.
 
 ## Findings considered and rejected
 
