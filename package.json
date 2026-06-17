@@ -1,7 +1,7 @@
 {
 	"name": "metter",
 	"version": "0.1.0",
-	"description": "Lightweight and flexible component toolkit",
+	"description": "Lightweight TypeScript client for the Meteora DLMM API, with Zod-validated responses",
 	"homepage": "https://github.com/qapquiz/metter#readme",
 	"bugs": {
 		"url": "https://github.com/qapquiz/metter/issues"
@@ -57,5 +57,8 @@
 	},
 	"simple-git-hooks": {
 		"pre-commit": "bun run lint && bun run type-check"
+	},
+	"dependencies": {
+		"zod": "^4.4.3"
 	}
 }
