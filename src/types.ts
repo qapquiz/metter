@@ -146,3 +146,159 @@ export interface MeteoraDlmmClientOptions {
 	/** Custom `fetch` implementation (mainly for testing). Defaults to global `fetch`. */
 	fetch?: typeof fetch;
 }
+
+// ===== GET /positions/{pool_address}/pnl =====
+
+/** Filter for which positions to return. Default is "all". */
+export type PositionStatus = 'open' | 'closed' | 'all';
+export const PositionStatusSchema: z.ZodType<PositionStatus> = z.enum(['open', 'closed', 'all']);
+
+/** A token amount with USD value (and optional SOL value). */
+export interface TokenAmount {
+	amount: string;
+	usd: string;
+	amountSol?: string | null;
+}
+export const TokenAmountSchema: z.ZodType<TokenAmount> = z.object({
+	amount: z.string(),
+	usd: z.string(),
+	amountSol: z.string().nullish(),
+});
+
+/** A USD total with optional SOL equivalent. */
+export interface TotalUsd {
+	usd: string;
+	sol?: string | null;
+}
+export const TotalUsdSchema: z.ZodType<TotalUsd> = z.object({
+	usd: z.string(),
+	sol: z.string().nullish(),
+});
+
+/** A pair of token amounts (X/Y) plus a combined USD total. Used for deposits/withdrawals/fees. */
+export interface TokenPairWithTotal {
+	tokenX: TokenAmount;
+	tokenY: TokenAmount;
+	total: TotalUsd;
+}
+export const TokenPairWithTotalSchema: z.ZodType<TokenPairWithTotal> = z.object({
+	tokenX: TokenAmountSchema,
+	tokenY: TokenAmountSchema,
+	total: TotalUsdSchema,
+});
+
+/** Live unrealized PnL detail — present only for open positions. */
+export interface UnrealizedPnl {
+	balances: number;
+	balanceTokenX: TokenAmount;
+	balanceTokenY: TokenAmount;
+	unclaimedFeeTokenX: TokenAmount;
+	unclaimedFeeTokenY: TokenAmount;
+	unclaimedRewardTokenX: TokenAmount;
+	unclaimedRewardTokenY: TokenAmount;
+	balancesSol?: string | null;
+}
+export const UnrealizedPnlSchema: z.ZodType<UnrealizedPnl> = z.object({
+	balances: z.number(),
+	balanceTokenX: TokenAmountSchema,
+	balanceTokenY: TokenAmountSchema,
+	unclaimedFeeTokenX: TokenAmountSchema,
+	unclaimedFeeTokenY: TokenAmountSchema,
+	unclaimedRewardTokenX: TokenAmountSchema,
+	unclaimedRewardTokenY: TokenAmountSchema,
+	balancesSol: z.string().nullish(),
+});
+
+/** One position with calculated PnL data. */
+export interface PositionPnlItem {
+	positionAddress: string;
+	minPrice: string;
+	maxPrice: string;
+	lowerBinId: number;
+	upperBinId: number;
+	feePerTvl24h: string;
+	isClosed: boolean;
+	pnlUsd: string;
+	pnlPctChange: string;
+	allTimeDeposits: TokenPairWithTotal;
+	allTimeWithdrawals: TokenPairWithTotal;
+	allTimeFees: TokenPairWithTotal;
+	isOutOfRange?: boolean | null;
+	pnlSol?: string | null;
+	pnlSolPctChange?: string | null;
+	poolActiveBinId?: number | null;
+	poolActivePrice?: string | null;
+	createdAt?: number | null;
+	closedAt?: number | null;
+	unrealizedPnl?: UnrealizedPnl | null;
+}
+export const PositionPnlItemSchema: z.ZodType<PositionPnlItem> = z.object({
+	positionAddress: z.string(),
+	minPrice: z.string(),
+	maxPrice: z.string(),
+	lowerBinId: z.number(),
+	upperBinId: z.number(),
+	feePerTvl24h: z.string(),
+	isClosed: z.boolean(),
+	pnlUsd: z.string(),
+	pnlPctChange: z.string(),
+	allTimeDeposits: TokenPairWithTotalSchema,
+	allTimeWithdrawals: TokenPairWithTotalSchema,
+	allTimeFees: TokenPairWithTotalSchema,
+	isOutOfRange: z.boolean().nullish(),
+	pnlSol: z.string().nullish(),
+	pnlSolPctChange: z.string().nullish(),
+	poolActiveBinId: z.number().nullish(),
+	poolActivePrice: z.string().nullish(),
+	createdAt: z.number().nullish(),
+	closedAt: z.number().nullish(),
+	unrealizedPnl: UnrealizedPnlSchema.nullish(),
+});
+
+/**
+ * Top-level response of `GET /positions/{pool_address}/pnl`.
+ *
+ * `tokenX`/`tokenY`/`rewardToken*` are the pool's token identities (nullable);
+ * `tokenXPrice`/`tokenYPrice`/`rewardToken*Price` are always present (required).
+ */
+export interface PositionPnl {
+	totalCount: number;
+	page: number;
+	pageSize: number;
+	hasNext: boolean;
+	positions: PositionPnlItem[];
+	tokenXPrice: string;
+	tokenYPrice: string;
+	rewardTokenXPrice: string;
+	rewardTokenYPrice: string;
+	tokenX?: string | null;
+	tokenY?: string | null;
+	rewardTokenX?: string | null;
+	rewardTokenY?: string | null;
+	solPrice?: string | null;
+}
+export const PositionPnlSchema: z.ZodType<PositionPnl> = z.object({
+	totalCount: z.number(),
+	page: z.number(),
+	pageSize: z.number(),
+	hasNext: z.boolean(),
+	positions: z.array(PositionPnlItemSchema),
+	tokenXPrice: z.string(),
+	tokenYPrice: z.string(),
+	rewardTokenXPrice: z.string(),
+	rewardTokenYPrice: z.string(),
+	tokenX: z.string().nullish(),
+	tokenY: z.string().nullish(),
+	rewardTokenX: z.string().nullish(),
+	rewardTokenY: z.string().nullish(),
+	solPrice: z.string().nullish(),
+});
+
+/** Parameters for `MeteoraDlmmClient.getPositionPnl` (the `poolAddress` path param is a separate argument). */
+export interface GetPositionPnlParams {
+	/** Solana wallet address (base58). Required. */
+	user: string;
+	status?: PositionStatus;
+	page?: number;
+	pageSize?: number;
+}
