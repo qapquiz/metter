@@ -9,7 +9,7 @@ honor its STOP conditions, and update your row when done.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 001  | Meteora DLMM API wrapper — `GET /portfolio/open` (Zod-validated) | P1 | M | — | DONE (reviewed/approved) |
-| 002  | `getPositionPnl` — `GET /positions/{pool_address}/pnl` (Zod-validated) | P1 | S–M | 001 | TODO |
+| 002  | `getPositionPnl` — `GET /positions/{pool_address}/pnl` (Zod-validated) | P1 | S–M | 001 | REVISE: live payload caught spec drift (pnlSol/pnlSolPctChange are string, not number); re-executing |
 
 ## Dependency notes
 

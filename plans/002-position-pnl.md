@@ -20,6 +20,14 @@
 - **Depends on**: plan 001 (DONE — `MeteoraDlmmClient`, the `request<T>`/`buildUrl` helpers, and the Zod-pattern conventions all exist)
 - **Category**: direction (feature)
 - **Planned at**: commit `a53470b`, 2026-06-17
+- **Revised**: 2026-06-17 — post-approval live verification against a real
+  position-bearing wallet (`87bdc…zjkA`, pool `4NTkK…Lbii`) revealed the OpenAPI
+  spec is WRONG about `PositionPnlItem.pnlSol` and `pnlSolPctChange`: spec says
+  `number`, but the live API returns them as **string**. The first execution
+  (commit `4eda5a2`, in worktree `feat/position-pnl`) typed them as `number`
+  per the spec and was BLOCKED on review. This revision changes both to
+  `string` and adds a regression test pinning the real captured payload. See
+  "Verified during planning" for the corrected story.
 
 ## Why this matters
 
@@ -164,7 +172,7 @@ The duplication (interface + `z.object`) is **intentional and required**. The `z
 
 - **An invalid `pool_address` does NOT 400** — the API returns 200 with `positions:[]` and `"0"` prices. Only `user` is pubkey-validated. Therefore: the client guards `user` (non-empty, like plan 001) but **does NOT validate `poolAddress` format** — let the API return its empty result. (Guarding `poolAddress` non-empty is fine and recommended, since an empty path segment is never a valid call.)
 - **`unrealizedPnl` is only present for OPEN positions** — for closed positions it is absent. The schema handles both (`.nullish()`).
-- **Number precision**: most USD/SOL amounts are strings; keep them `string`. Two fields are genuinely `number` per spec (`UnrealizedPnl.balances: number`, `PositionPnlItem.pnlSol: number | null`, `pnlSolPctChange: number | null`) — type those as `number` (not string) to match the API; they are ratios/aggregate floats, not lamports.
+- **Number precision**: most USD/SOL amounts are strings; keep them `string`. **EXCEPTION confirmed live**: the OpenAPI spec claims `PositionPnlItem.pnlSol` and `pnlSolPctChange` are `number`, but a real populated response returns them as **string** (e.g. `"pnlSol": "0.004720482401372017"`). Type them as `string` (the spec is wrong). The one genuinely-`number` field is `UnrealizedPnl.balances` (a JSON number, e.g. `331.14401628988475`) — keep that as `number`. Trust the wire over the spec for any amount field.
 
 ### Naming convention chosen (parallel to plan 001)
 
@@ -301,8 +309,8 @@ export interface PositionPnlItem {
 	allTimeWithdrawals: TokenPairWithTotal;
 	allTimeFees: TokenPairWithTotal;
 	isOutOfRange?: boolean | null;
-	pnlSol?: number | null;
-	pnlSolPctChange?: number | null;
+	pnlSol?: string | null;
+	pnlSolPctChange?: string | null;
 	poolActiveBinId?: number | null;
 	poolActivePrice?: string | null;
 	createdAt?: number | null;
@@ -323,8 +331,8 @@ export const PositionPnlItemSchema: z.ZodType<PositionPnlItem> = z.object({
 	allTimeWithdrawals: TokenPairWithTotalSchema,
 	allTimeFees: TokenPairWithTotalSchema,
 	isOutOfRange: z.boolean().nullish(),
-	pnlSol: z.number().nullish(),
-	pnlSolPctChange: z.number().nullish(),
+	pnlSol: z.string().nullish(),
+	pnlSolPctChange: z.string().nullish(),
 	poolActiveBinId: z.number().nullish(),
 	poolActivePrice: z.string().nullish(),
 	createdAt: z.number().nullish(),
@@ -558,8 +566,8 @@ describe('MeteoraDlmmClient.getPositionPnl', () => {
 				pnlUsd: '120.50',
 				pnlPctChange: '13.7',
 				isOutOfRange: false,
-				pnlSol: 0.8,
-				pnlSolPctChange: 13.7,
+				pnlSol: '0.8',
+				pnlSolPctChange: '13.7',
 				poolActiveBinId: 8388610,
 				poolActivePrice: '1.0',
 				createdAt: 1700000000,
@@ -708,6 +716,85 @@ describe('MeteoraDlmmClient.getPositionPnl', () => {
 		expect(result.positions[0].unrealizedPnl).toBeUndefined();
 	});
 
+	test('regression: real captured live payload parses (spec said pnlSol was number; live is string)', async () => {
+		// Captured 2026-06-17 from GET /positions/4NTkKwwtWB6Q8DvwNCkJMtVTF8XutSz22qAsRaFxLbii/pnl
+		// for wallet 87bdcSg4zvjExbvsUSbGifYUp75JdLhLafjgwvCjzjkA (SPCX/SOL, one open position).
+		// Pins the real wire shape so the spec-vs-reality drift on pnlSol/pnlSolPctChange
+		// (and the whole nested structure) can't silently regress.
+		const REAL: PositionPnl = {
+			totalCount: 1,
+			page: 1,
+			pageSize: 5,
+			hasNext: false,
+			positions: [{
+				positionAddress: 'HSqmC7JcAkfcgVsGcyC5yZiuMwY2PGHxXrpc8mJSp6UB',
+				minPrice: '1.4668539686714341',
+				maxPrice: '2.462189456832593',
+				lowerBinId: 915,
+				upperBinId: 980,
+				feePerTvl24h: '0.02687357050865781',
+				isClosed: false,
+				pnlUsd: '26.371648584300203',
+				pnlPctChange: '8.643057867004272',
+				isOutOfRange: true,
+				pnlSol: '0.004720482401372017',
+				pnlSolPctChange: '0.10489960966533095',
+				poolActiveBinId: 990,
+				poolActivePrice: '2.666409134279774',
+				createdAt: 1781350962,
+				closedAt: null,
+				allTimeDeposits: {
+					tokenX: { amount: '0', usd: '0', amountSol: '0' },
+					tokenY: { amount: '4.499999968', usd: '305.11942636617744', amountSol: '4.499999968000001' },
+					total: { usd: '305.1194263661774', sol: '4.499999968' },
+				},
+				allTimeWithdrawals: {
+					tokenX: { amount: '0', usd: '0', amountSol: '0' },
+					tokenY: { amount: '0', usd: '0', amountSol: '0' },
+					total: { usd: '0', sol: '0' },
+				},
+				allTimeFees: {
+					tokenX: { amount: '0', usd: '0', amountSol: '0' },
+					tokenY: { amount: '0', usd: '0', amountSol: '0' },
+					total: { usd: '0', sol: '0' },
+				},
+				unrealizedPnl: {
+					balances: 331.14401628988475,
+					balancesSol: '4.4998031338656945',
+					balanceTokenX: { amount: '0', usd: '0', amountSol: '0' },
+					balanceTokenY: { amount: '4.500004289', usd: '331.14401628988475', amountSol: '4.500004289' },
+					unclaimedFeeTokenX: { amount: '0.000929', usd: '0.18310882568963663', amountSol: '0.0024882034013726582' },
+					unclaimedFeeTokenY: { amount: '0.002227958', usd: '0.16394983490318604', amountSol: '0.002227958' },
+					unclaimedRewardTokenX: { amount: '0', usd: '0', amountSol: '0' },
+					unclaimedRewardTokenY: { amount: '0', usd: '0', amountSol: '0' },
+				},
+			}],
+			tokenX: 'SPCXxcqXj6e5dJDVNovHN8744zkbhM2bYudU45BimGb',
+			tokenY: 'So11111111111111111111111111111111111111112',
+			tokenXPrice: '196.79685446928883',
+			tokenYPrice: '73.59077862710969',
+			rewardTokenX: '11111111111111111111111111111111',
+			rewardTokenY: '11111111111111111111111111111111',
+			rewardTokenXPrice: '0',
+			rewardTokenYPrice: '0',
+			solPrice: '73.59077862710969',
+		};
+
+		globalThis.fetch = mock(() => Promise.resolve(mockResponse(200, REAL))) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient();
+		const result = await client.getPositionPnl('4NTkKwwtWB6Q8DvwNCkJMtVTF8XutSz22qAsRaFxLbii', {
+			user: '87bdcSg4zvjExbvsUSbGifYUp75JdLhLafjgwvCjzjkA',
+		});
+
+		expect(result).toEqual(REAL);
+		// The load-bearing assertions: these two arrive as STRINGS (spec wrongly says number).
+		expect(result.positions[0].pnlSol).toBe('0.004720482401372017');
+		expect(result.positions[0].pnlSolPctChange).toBe('0.10489960966533095');
+		// balances is genuinely a number.
+		expect(result.positions[0].unrealizedPnl?.balances).toBe(331.14401628988475);
+		expect(result.positions[0].allTimeDeposits.tokenY.amountSol).toBe('4.499999968000001');
+	});
+
 	test('live smoke (only runs when RUN_LIVE=1): real empty-wallet call against a real pool', async () => {
 		// Deterministic, public, safe. Skipped in normal CI to avoid network flakes.
 		if (process.env.RUN_LIVE !== '1') return;
@@ -815,15 +902,29 @@ To de-risk the load-bearing part (nested Zod schemas under `isolatedDeclarations
    - a **closed-position variant** (`unrealizedPnl` absent) → parses to `undefined`;
    - a **malformed input** (required `tokenXPrice` missing) → throws `ZodError` with `issue.path === ["tokenXPrice"]`.
 
-So the executor should get green checks on the first run. (The populated nested shape is spec-derived, not yet confirmed against a live populated payload — see Maintenance notes for how to confirm it with a real position-bearing wallet.)
+So the executor should get green checks on the first run.
+
+**Post-approval update (the honest story):** the planning-time verification
+above was insufficient for the populated shape — I validated only against the
+empty response + a *spec-built* fixture, never a real position. After the first
+execution passed review, live verification against wallet `87bdc…zjkA` (pool
+`4NTkK…Lbii`, SPCX/SOL) revealed the OpenAPI spec is wrong about
+`PositionPnlItem.pnlSol` and `pnlSolPctChange` (spec: `number`; live: `string`).
+The shipped schema rejected the real payload. This revision:
+3. **Re-validated** the corrected `PositionPnlSchema` (both fields → `string`)
+   against the real captured populated payload → parses clean; and confirmed
+   `UnrealizedPnl.balances` is genuinely a `number` (left as-is).
+The real payload is now pinned by a regression test so the drift can't recur.
+Lesson for future endpoints: capture a real populated payload *during* planning,
+not after — the Meteora OpenAPI spec is not reliable on scalar types.
 
 ## Maintenance notes
 
 For whoever owns this code after it lands:
 
-- **The populated nested shape is spec-derived.** The top-level response and the empty case are confirmed live; the nested `PositionPnlItem`/`TokenPairWithTotal`/`UnrealizedPnl` structures are derived from the OpenAPI `required` arrays (and compile/runtime-verified against a spec-built fixture). To confirm against a **real** populated payload, run `RUN_LIVE=1 bun test` after substituting `POOL` and the live test's `user` for a wallet that actually has positions in that pool (the test file's `getPositionPnl` live smoke uses an empty wallet by default). Eyeball that no expected field is wrongly typed. If a field's optionality/nullability differs from the spec, adjust the interface AND the schema together (the `z.ZodType<T>` annotation forces them to stay in sync).
+- **The populated nested shape is now LIVE-CONFIRMED.** Verified post-approval against wallet `87bdc…zjkA` in pool `4NTkK…Lbii` (SPCX/SOL): the full `PositionPnlItem`/`TokenPairWithTotal`/`UnrealizedPnl` structure parses through the schema, AND that check caught the `pnlSol`/`pnlSolPctChange` spec-vs-wire drift (spec said `number`; live is `string`) — fixed in this revision and pinned by the `regression: real captured live payload` test. If a future API change alters a field's optionality/nullability/type, adjust the interface AND the schema together (the `z.ZodType<T>` annotation forces them to stay in sync) and re-capture the regression payload.
 - **Adding the next endpoint**: same recipe — append `interface` + `z.ZodType<T>`-annotated schema to `src/types.ts`, add a method to `MeteoraDlmmClient` that calls `this.request(url, XSchema)`, extend the barrel, add a `describe` block. The `request<T>(url, schema: ZodType<T>)` helper remains the single chokepoint.
 - **`pool_address` is not API-validated** — a typo'd pool returns 200 empty, not 400. Don't promise callers a 400 for bad pools (only bad `user`). The client guards non-empty only.
-- **Two genuinely-`number` fields** (`UnrealizedPnl.balances`, `PositionPnlItem.pnlSol`/`pnlSolPctChange`) are ratios/aggregate floats, not lamports — safe as `number`. Everything else USD/SOL stays `string` for precision.
+- **One genuinely-`number` field**: `UnrealizedPnl.balances` (a JSON number, confirmed live). `PositionPnlItem.pnlSol` and `pnlSolPctChange` are **string** despite the OpenAPI spec saying `number` (confirmed live — see the regression test). Everything else USD/SOL stays `string` for precision. Lesson: the Meteora OpenAPI spec is not fully trustworthy on scalar types — trust the wire.
 - **Reviewer scrutiny points**: (1) the path construction `/positions/${encodeURIComponent(poolAddress)}/pnl`; (2) the snake_case query mapping in `toPositionPnlQuery` (`page_size`, but `status` is single-word so stays as-is); (3) that `request<T>`/`buildUrl`/`getOpenPortfolio` are byte-identical to before (this plan is additive); (4) every new schema's `z.ZodType<T>` annotation.
 - **Follow-up deferred**: pagination iterator (response exposes `hasNext`/`page`/`pageSize`/`totalCount`), throttling, a params Zod schema, and the remaining 17 endpoints.
