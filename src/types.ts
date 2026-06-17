@@ -224,8 +224,8 @@ export interface PositionPnlItem {
 	allTimeWithdrawals: TokenPairWithTotal;
 	allTimeFees: TokenPairWithTotal;
 	isOutOfRange?: boolean | null;
-	pnlSol?: number | null;
-	pnlSolPctChange?: number | null;
+	pnlSol?: string | null;
+	pnlSolPctChange?: string | null;
 	poolActiveBinId?: number | null;
 	poolActivePrice?: string | null;
 	createdAt?: number | null;
@@ -246,8 +246,8 @@ export const PositionPnlItemSchema: z.ZodType<PositionPnlItem> = z.object({
 	allTimeWithdrawals: TokenPairWithTotalSchema,
 	allTimeFees: TokenPairWithTotalSchema,
 	isOutOfRange: z.boolean().nullish(),
-	pnlSol: z.number().nullish(),
-	pnlSolPctChange: z.number().nullish(),
+	pnlSol: z.string().nullish(),
+	pnlSolPctChange: z.string().nullish(),
 	poolActiveBinId: z.number().nullish(),
 	poolActivePrice: z.string().nullish(),
 	createdAt: z.number().nullish(),
