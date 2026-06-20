@@ -51,8 +51,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update npm
-        run: npm install -g npm@latest
-
       - name: Publish packages to npm
-        run: bun pm pack && npm publish ./*.tgz --access public
+        run: bun pm pack && npm publish ./*.tgz --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
