@@ -10,6 +10,7 @@ honor its STOP conditions, and update your row when done.
 |------|-------|----------|--------|------------|--------|
 | 001  | Meteora DLMM API wrapper — `GET /portfolio/open` (Zod-validated) | P1 | M | — | DONE (reviewed/approved) |
 | 002  | `getPositionPnl` — `GET /positions/{pool_address}/pnl` (Zod-validated) | P1 | S–M | 001 | DONE (rev 2: reviewed/approved after live-payload fix) |
+| 003  | Fix release pipeline — authenticate npm publish (`NODE_AUTH_TOKEN`) + provenance | P1 | S | — | TODO |
 
 ## Dependency notes
 
@@ -21,6 +22,17 @@ honor its STOP conditions, and update your row when done.
   `request<T>(url, schema)` / `buildUrl(path, query)` helpers, and the
   `z.ZodType<T>` schema conventions unchanged — purely additive (new types,
   one new method, new tests). No edits to 001's logic.
+- 003 has no dependencies and is independent of the endpoint plans. It fixes
+  the release pipeline (the original audit's #1 finding) so a `v*` tag push
+  actually publishes to npm. Safe to land before or after any endpoint plan.
+
+## Carried-over findings (deferred, not yet planned)
+
+- `bun-version: latest` unpinned in `ci.yml` + `release.yml` — a future Bun
+  release could break CI/release with no warning. Valid follow-up; not
+  blocking. Plan 003's maintenance notes reference this.
+- Optional `typescript` peer dependency in `package.json` — misleading on a
+  compiled runtime library. Valid DX follow-up; not blocking.
 
 ## Findings considered and rejected
 
