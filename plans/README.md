@@ -13,7 +13,7 @@ fully before starting, honor its STOP conditions, and update your row when done.
 | 003  | Fix release pipeline — authenticate npm publish (`NODE_AUTH_TOKEN`) + provenance | P1 | S | — | DONE (reviewed/approved; merged in `75b10e4`; static-only — e2e needs real tag push + `NPM_TOKEN` secret) |
 | 004  | Pin Bun version in CI + release workflows (replace `bun-version: latest`) | P3 | S | — | TODO |
 | 005  | Remove misleading optional `typescript` peer dependency from `package.json` | P3 | S | — | TODO |
-| 006  | Expand `MeteoraDlmmClient` test coverage (timeout, network failure, non-JSON error, baseUrl normalization) | P2 | M | — | TODO |
+| 006  | Expand `MeteoraDlmmClient` test coverage (timeout, network failure, non-JSON error, baseUrl normalization) | P2 | M | — | DONE (reviewed/approved; characterization tests, src/ untouched) |
 | 007  | `getOhlcv` — `GET /pools/{address}/ohlcv` (Zod-validated) | P2 | S | 001 | DONE (reviewed/approved; live-confirmed wire shape) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale — finding fixed independently or approach abandoned)
