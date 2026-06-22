@@ -155,6 +155,58 @@ describe('MeteoraDlmmClient.getOpenPortfolio', () => {
 		expect(called).toBe(false);
 	});
 
+	test('network failure: a fetch rejection propagates unchanged (not swallowed)', async () => {
+		const error = new TypeError('fetch failed');
+		globalThis.fetch = mock(() => Promise.reject(error)) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient();
+		await expect(
+			client.getOpenPortfolio({ user: 'SomeWallet1111111111111111111111111111111111' }),
+		).rejects.toBe(error);
+	});
+
+	test('timeout: request is aborted via AbortSignal after the configured timeout', async () => {
+		globalThis.fetch = mock((_url, options) => {
+			return new Promise((_resolve, reject) => {
+				options.signal?.addEventListener('abort', () => {
+					reject(new DOMException('The operation was aborted due to timeout', 'AbortError'));
+				});
+			});
+		}) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient({ timeout: 50 });
+		await expect(
+			client.getOpenPortfolio({ user: 'SomeWallet1111111111111111111111111111111111' }),
+		).rejects.toMatchObject({ name: 'AbortError' });
+	});
+
+	test('non-JSON error body (e.g. proxy HTML 502): MeteoraApiError carries status + raw text', async () => {
+		globalThis.fetch = mock(() =>
+			Promise.resolve(new Response('<html><body>502 Bad Gateway</body></html>', {
+				status: 502,
+				headers: { 'content-type': 'text/html' },
+			})),
+		) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient();
+		await expect(
+			client.getOpenPortfolio({ user: 'SomeWallet1111111111111111111111111111111111' }),
+		).rejects.toMatchObject({
+			name: 'MeteoraApiError',
+			status: 502,
+			body: '<html><body>502 Bad Gateway</body></html>',
+		});
+	});
+
+	test('baseUrl: trailing slashes are stripped so no double slash appears in the URL', async () => {
+		let capturedUrl = '';
+		globalThis.fetch = mock((url: string | URL | Request) => {
+			capturedUrl = String(url);
+			return Promise.resolve(mockResponse(200, { ...POPULATED, pools: [] }));
+		}) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient({ baseUrl: 'https://example.test///' });
+		await client.getOpenPortfolio({ user: 'UserWallet1111111111111111111111111111111111' });
+		expect(capturedUrl.startsWith('https://example.test/portfolio/open')).toBe(true);
+		expect(capturedUrl).not.toContain('https://example.test//');
+	});
+
 	test('live smoke (only runs when RUN_LIVE=1): real empty-wallet call', async () => {
 		// Deterministic, public, safe. Skipped in normal CI to avoid network flakes.
 		if (process.env.RUN_LIVE !== '1') return;
