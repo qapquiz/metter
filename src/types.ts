@@ -302,3 +302,68 @@ export interface GetPositionPnlParams {
 	page?: number;
 	pageSize?: number;
 }
+
+// ===== GET /pools/{address}/ohlcv =====
+
+/** Candle interval for OHLCV. Invalid values are rejected by the API (400). */
+export type OhlcvTimeframe = '5m' | '30m' | '1h' | '2h' | '4h' | '12h' | '24h';
+export const OhlcvTimeframeSchema: z.ZodType<OhlcvTimeframe> = z.enum([
+	'5m',
+	'30m',
+	'1h',
+	'2h',
+	'4h',
+	'12h',
+	'24h',
+]);
+
+/** A single OHLCV candle. */
+export interface OhlcvCandle {
+	/** Unix seconds, candle bucket start. */
+	timestamp: number;
+	/** ISO 8601, e.g. "2026-06-22T09:00:00+00:00". */
+	timestamp_str: string;
+	open: number;
+	high: number;
+	low: number;
+	close: number;
+	volume: number;
+}
+export const OhlcvCandleSchema: z.ZodType<OhlcvCandle> = z.object({
+	timestamp: z.number(),
+	timestamp_str: z.string(),
+	open: z.number(),
+	high: z.number(),
+	low: z.number(),
+	close: z.number(),
+	volume: z.number(),
+});
+
+/**
+ * Top-level response of `GET /pools/{address}/ohlcv`.
+ *
+ * `timeframe` is the echoed candle interval (always present in practice, but
+ * nullable per the OpenAPI spec). `data` may be empty for a window with no trades.
+ */
+export interface Ohlcv {
+	start_time: number;
+	end_time: number;
+	timeframe?: OhlcvTimeframe | null;
+	data: OhlcvCandle[];
+}
+export const OhlcvSchema: z.ZodType<Ohlcv> = z.object({
+	start_time: z.number(),
+	end_time: z.number(),
+	timeframe: OhlcvTimeframeSchema.nullish(),
+	data: z.array(OhlcvCandleSchema),
+});
+
+/** Parameters for `MeteoraDlmmClient.getOhlcv` (the `address` path param is a separate argument). */
+export interface GetOhlcvParams {
+	/** Candle interval. Defaults to `24h` server-side. */
+	timeframe?: OhlcvTimeframe;
+	/** Inclusive lower bound, unix seconds. */
+	start_time?: number;
+	/** Inclusive upper bound, unix seconds. Defaults to "now" server-side. */
+	end_time?: number;
+}
