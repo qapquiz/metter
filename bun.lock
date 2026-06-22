@@ -16,12 +16,6 @@
         "simple-git-hooks": "^2.13.1",
         "typescript": "^6.0.3",
       },
-      "peerDependencies": {
-        "typescript": ">=4.5.0",
-      },
-      "optionalPeers": [
-        "typescript",
-      ],
     },
   },
   "packages": {

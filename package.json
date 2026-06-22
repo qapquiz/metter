@@ -47,14 +47,6 @@
 		"simple-git-hooks": "^2.13.1",
 		"typescript": "^6.0.3"
 	},
-	"peerDependencies": {
-		"typescript": ">=4.5.0"
-	},
-	"peerDependenciesMeta": {
-		"typescript": {
-			"optional": true
-		}
-	},
 	"simple-git-hooks": {
 		"pre-commit": "bun run lint && bun run type-check"
 	},
