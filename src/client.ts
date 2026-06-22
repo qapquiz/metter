@@ -1,8 +1,10 @@
 import type { ZodType } from 'zod';
 import type {
+	GetOhlcvParams,
 	GetOpenPortfolioParams,
 	GetPositionPnlParams,
 	MeteoraDlmmClientOptions,
+	Ohlcv,
 	OpenPortfolio,
 	PositionPnl,
 } from './types';
@@ -12,7 +14,7 @@ import {
 	DEFAULT_TIMEOUT_MS,
 	METEORA_DLMM_MAINNET_URL,
 } from './constants';
-import { OpenPortfolioSchema, PositionPnlSchema } from './types';
+import { OhlcvSchema, OpenPortfolioSchema, PositionPnlSchema } from './types';
 
 /** Client for the Meteora DLMM REST API. */
 export class MeteoraDlmmClient {
@@ -64,6 +66,27 @@ export class MeteoraDlmmClient {
 		return this.request(url, PositionPnlSchema);
 	}
 
+	/**
+	 * Get OHLCV candles for a pool over a time window (price history for charting).
+	 *
+	 * @param address - The pool (LB pair) address. URL-encoded automatically.
+	 * @param params - Optional query params: `timeframe` (candle interval, default `24h`),
+	 *   `start_time`/`end_time` (unix seconds, inclusive). Omit the window to use the
+	 *   API's default range for the chosen timeframe.
+	 * @throws {MeteoraApiError} on a non-2xx response (invalid `address` → 400; invalid `timeframe` → 400).
+	 * @throws {ZodError} (from `zod`) when a 2xx response body does not match the expected schema.
+	 * @throws {TypeError} when `address` is missing/empty (before any network call).
+	 */
+	async getOhlcv(address: string, params?: GetOhlcvParams): Promise<Ohlcv> {
+		if (typeof address !== 'string' || address.length === 0) {
+			throw new TypeError('getOhlcv requires a non-empty "address".');
+		}
+
+		const path = `/pools/${encodeURIComponent(address)}/ohlcv`;
+		const url = this.buildUrl(path, toOhlcvQuery(params));
+		return this.request(url, OhlcvSchema);
+	}
+
 	private buildUrl(path: string, query: URLSearchParams): string {
 		const qs = query.toString();
 		return qs.length > 0 ? `${this.baseUrl}${path}?${qs}` : `${this.baseUrl}${path}`;
@@ -104,6 +127,16 @@ function toPositionPnlQuery(params: GetPositionPnlParams): URLSearchParams {
 	if (params.status !== undefined) query.set('status', params.status);
 	if (params.page !== undefined) query.set('page', String(params.page));
 	if (params.pageSize !== undefined) query.set('page_size', String(params.pageSize));
+	return query;
+}
+
+/** Maps camelCase client params to the API's snake_case query parameters for /pools/{address}/ohlcv. */
+function toOhlcvQuery(params: GetOhlcvParams | undefined): URLSearchParams {
+	const query = new URLSearchParams();
+	if (params === undefined) return query;
+	if (params.timeframe !== undefined) query.set('timeframe', params.timeframe);
+	if (params.start_time !== undefined) query.set('start_time', String(params.start_time));
+	if (params.end_time !== undefined) query.set('end_time', String(params.end_time));
 	return query;
 }
 

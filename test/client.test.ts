@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { ZodError } from 'zod';
-import type { OpenPortfolio, PositionPnl } from '../src/types';
+import type { Ohlcv, OpenPortfolio, PositionPnl } from '../src/types';
 import { METEORA_DLMM_DEVNET_URL } from '../src/constants';
 import { MeteoraDlmmClient } from '../src/client';
 
@@ -423,5 +423,139 @@ describe('MeteoraDlmmClient.getPositionPnl', () => {
 		expect(result.positions).toEqual([]);
 		expect(result.totalCount).toBe(0);
 		expect(result.tokenX).toBeNull();
+	});
+});
+
+describe('MeteoraDlmmClient.getOhlcv', () => {
+	// A real captured 7-candle payload (pool DQ9weJhfi.../YZY-USDC, timeframe=1h, 2026-06-22).
+	// Pinned so the wire shape (numbers, not strings; snake_case fields) can't silently regress —
+	// the same class of drift plan 002 caught on pnlSol.
+	const REAL: Ohlcv = {
+		start_time: 1782118800,
+		end_time: 1782140400,
+		timeframe: '1h',
+		data: [
+			{
+				timestamp: 1782118800,
+				timestamp_str: '2026-06-22T09:00:00+00:00',
+				open: 0.2970245855171326,
+				high: 0.2970245855171326,
+				low: 0.2970245855171326,
+				close: 0.2970245855171326,
+				volume: 11.01723427984364,
+			},
+			{
+				timestamp: 1782122400,
+				timestamp_str: '2026-06-22T10:00:00+00:00',
+				open: 0.2970245855171326,
+				high: 0.2970245855171326,
+				low: 0.2970245855171326,
+				close: 0.2970245855171326,
+				volume: 0,
+			},
+			{
+				timestamp: 1782126000,
+				timestamp_str: '2026-06-22T11:00:00+00:00',
+				open: 0.2970245855171326,
+				high: 0.2970245855171326,
+				low: 0.2970245855171326,
+				close: 0.2970245855171326,
+				volume: 0,
+			},
+		],
+	};
+
+	test('happy path: parses candles; serializes path + snake_case query (no camelCase renames)', async () => {
+		let capturedUrl = '';
+		globalThis.fetch = mock((url: string | URL | Request) => {
+			capturedUrl = String(url);
+			return Promise.resolve(mockResponse(200, REAL));
+		}) as unknown as typeof fetch;
+
+		const client = new MeteoraDlmmClient();
+		const result = await client.getOhlcv('DQ9weJhfiU4iL5LUoeshDrm5KxDHCMiSbnnKJz7buMcf', {
+			timeframe: '1h',
+			start_time: 1782118800,
+			end_time: 1782140400,
+		});
+
+		expect(result).toEqual(REAL);
+		expect(result.data[0].close).toBe(0.2970245855171326);
+		expect(typeof result.data[0].volume).toBe('number');
+		expect(capturedUrl).toContain('https://dlmm.datapi.meteora.ag/pools/');
+		expect(capturedUrl).toContain('/pools/DQ9weJhfiU4iL5LUoeshDrm5KxDHCMiSbnnKJz7buMcf/ohlcv?');
+		expect(capturedUrl).toContain('timeframe=1h');
+		expect(capturedUrl).toContain('start_time=1782118800');
+		expect(capturedUrl).toContain('end_time=1782140400');
+	});
+
+	test('no-params call: builds URL with just the path (server uses defaults)', async () => {
+		let capturedUrl = '';
+		globalThis.fetch = mock((url: string | URL | Request) => {
+			capturedUrl = String(url);
+			return Promise.resolve(mockResponse(200, REAL));
+		}) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient();
+		await client.getOhlcv('SomePool11111111111111111111111111111111111');
+		// No query string at all when params omitted.
+		expect(capturedUrl).toBe('https://dlmm.datapi.meteora.ag/pools/SomePool11111111111111111111111111111111111/ohlcv');
+	});
+
+	test('empty data array (window with no trades) parses cleanly', async () => {
+		globalThis.fetch = mock(() =>
+			Promise.resolve(mockResponse(200, {
+				start_time: 1782118800,
+				end_time: 1782140400,
+				timeframe: '1h',
+				data: [],
+			})),
+		) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient();
+		const result = await client.getOhlcv('SomePool11111111111111111111111111111111111');
+		expect(result.data).toEqual([]);
+		expect(result.timeframe).toBe('1h');
+	});
+
+	test('malformed 2xx body: throws ZodError (required data field missing)', async () => {
+		globalThis.fetch = mock(() =>
+			Promise.resolve(mockResponse(200, {
+				start_time: 1,
+				end_time: 2,
+			})),
+		) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient();
+		await expect(
+			client.getOhlcv('SomePool11111111111111111111111111111111111'),
+		).rejects.toBeInstanceOf(ZodError);
+	});
+
+	test('400 error: throws MeteoraApiError with status + API message (bad address)', async () => {
+		globalThis.fetch = mock(() =>
+			Promise.resolve(mockResponse(400, { message: 'address: Validation error: invalid_pubkey' })),
+		) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient();
+		await expect(
+			client.getOhlcv('bad'),
+		).rejects.toMatchObject({ name: 'MeteoraApiError', status: 400, message: 'address: Validation error: invalid_pubkey' });
+	});
+
+	test('throws TypeError when address is empty (before any network call)', async () => {
+		let called = false;
+		globalThis.fetch = mock(() => {
+			called = true;
+			return Promise.resolve(mockResponse(200, {}));
+		}) as unknown as typeof fetch;
+		const client = new MeteoraDlmmClient();
+		await expect(client.getOhlcv('')).rejects.toBeInstanceOf(TypeError);
+		expect(called).toBe(false);
+	});
+
+	test('live smoke (only runs when RUN_LIVE=1): real OHLCV against a real pool', async () => {
+		// Deterministic, public, safe. Skipped in normal CI to avoid network flakes.
+		if (process.env.RUN_LIVE !== '1') return;
+		const client = new MeteoraDlmmClient();
+		const result = await client.getOhlcv('DQ9weJhfiU4iL5LUoeshDrm5KxDHCMiSbnnKJz7buMcf', { timeframe: '1h' });
+		expect(Array.isArray(result.data)).toBe(true);
+		expect(typeof result.start_time).toBe('number');
 	});
 });

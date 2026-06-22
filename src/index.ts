@@ -2,9 +2,13 @@ export { METEORA_DLMM_MAINNET_URL, METEORA_DLMM_DEVNET_URL, DEFAULT_TIMEOUT_MS }
 export { MeteoraDlmmClient } from './client';
 export { MeteoraApiError } from './errors';
 export type {
+	GetOhlcvParams,
 	GetOpenPortfolioParams,
 	GetPositionPnlParams,
 	MeteoraDlmmClientOptions,
+	Ohlcv,
+	OhlcvCandle,
+	OhlcvTimeframe,
 	OpenPortfolio,
 	OpenPortfolioPoolItem,
 	OpenPortfolioSortBy,
@@ -19,6 +23,9 @@ export type {
 	UnrealizedPnl,
 } from './types';
 export {
+	OhlcvSchema,
+	OhlcvCandleSchema,
+	OhlcvTimeframeSchema,
 	OpenPortfolioSchema,
 	OpenPortfolioPoolItemSchema,
 	OpenPortfolioTotalSchema,

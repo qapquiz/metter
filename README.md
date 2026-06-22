@@ -44,6 +44,19 @@ for (const pos of pnl.positions) {
 }
 ```
 
+```typescript
+// OHLCV price history for a pool (use with getPositionPnl's minPrice/maxPrice
+// to overlay an LP position's range on a price chart):
+const ohlcv = await client.getOhlcv('DQ9weJhfiU4iL5LUoeshDrm5KxDHCMiSbnnKJz7buMcf', {
+  timeframe: '1h',
+  start_time: Math.floor(Date.now() / 1000) - 24 * 60 * 60, // last 24h
+});
+
+for (const candle of ohlcv.data) {
+  console.log(candle.timestamp_str, candle.open, candle.high, candle.low, candle.close);
+}
+```
+
 Responses are validated at runtime with Zod; the exported `OpenPortfolioSchema` (and friends) let you re-validate or parse API data yourself.
 
 ## Contributing
