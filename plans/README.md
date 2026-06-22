@@ -11,8 +11,8 @@ fully before starting, honor its STOP conditions, and update your row when done.
 | 001  | Meteora DLMM API wrapper — `GET /portfolio/open` (Zod-validated) | P1 | M | — | DONE (reviewed/approved) |
 | 002  | `getPositionPnl` — `GET /positions/{pool_address}/pnl` (Zod-validated) | P1 | S–M | 001 | DONE (rev 2: reviewed/approved after live-payload fix) |
 | 003  | Fix release pipeline — authenticate npm publish (`NODE_AUTH_TOKEN`) + provenance | P1 | S | — | DONE (reviewed/approved; merged in `75b10e4`; static-only — e2e needs real tag push + `NPM_TOKEN` secret) |
-| 004  | Pin Bun version in CI + release workflows (replace `bun-version: latest`) | P3 | S | — | TODO |
-| 005  | Remove misleading optional `typescript` peer dependency from `package.json` | P3 | S | — | TODO |
+| 004  | Pin Bun version in CI + release workflows (replace `bun-version: latest`) | P3 | S | — | DONE (reviewed/approved; pinned to 1.3.14) |
+| 005  | Remove misleading optional `typescript` peer dependency from `package.json` | P3 | S | — | DONE (reviewed/approved; devDep kept, only peer blocks removed) |
 | 006  | Expand `MeteoraDlmmClient` test coverage (timeout, network failure, non-JSON error, baseUrl normalization) | P2 | M | — | DONE (reviewed/approved; characterization tests, src/ untouched) |
 | 007  | `getOhlcv` — `GET /pools/{address}/ohlcv` (Zod-validated) | P2 | S | 001 | DONE (reviewed/approved; live-confirmed wire shape) |
 
