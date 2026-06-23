@@ -158,5 +158,5 @@ function extractMessage(body: unknown): string | undefined {
 	return undefined;
 }
 
-// Re-export the error type so consumers can `import { MeteoraApiError } from 'metter'`.
+// Re-export the error type so consumers can `import { MeteoraApiError } from 'meteora-metter'`.
 export type { MeteoraApiErrorType };

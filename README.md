@@ -5,13 +5,13 @@ Lightweight TypeScript client for the Meteora DLMM API, with Zod-validated respo
 ## Installation
 
 ```bash
-bun add metter
+bun add meteora-metter
 ```
 
 ## Usage
 
 ```typescript
-import { MeteoraDlmmClient, METEORA_DLMM_DEVNET_URL } from 'metter';
+import { MeteoraDlmmClient, METEORA_DLMM_DEVNET_URL } from 'meteora-metter';
 
 const client = new MeteoraDlmmClient();
 // Default: mainnet. To use devnet, pass { baseUrl: METEORA_DLMM_DEVNET_URL }.
@@ -66,7 +66,7 @@ risk. `getNetDeposits` nets them (exact, no float rounding) into the same shape 
 `allTimeDeposits`:
 
 ```typescript
-import { MeteoraDlmmClient, getNetDeposits } from 'metter';
+import { MeteoraDlmmClient, getNetDeposits } from 'meteora-metter';
 
 const pnl = await client.getPositionPnl(poolAddress, { user: wallet, status: 'open' });
 const real = getNetDeposits(pnl.positions[0]);
@@ -93,7 +93,7 @@ MIT
 
 Releases are triggered by pushing a `v*` tag, which runs the `Release` workflow
 ([`.github/workflows/release.yml`](./.github/workflows/release.yml)): it builds,
-tests, lints, packs, and publishes `metter` to npm with build provenance.
+tests, lints, packs, and publishes `meteora-metter` to npm with build provenance.
 
 To cut a release locally:
 
@@ -103,6 +103,6 @@ bun run release   # bumpp: bumps version, commits, pushes, and creates the v* ta
 
 Before the first release, create an **Actions secret named `NPM_TOKEN`** in the
 repo settings (Settings → Secrets and variables → Actions → New repository
-secret) containing an npm access token with publish rights for `metter`
+secret) containing an npm access token with publish rights for `meteora-metter`
 (automation-scope or a granular publish token). Without it, the publish step
 fails with `ENEEDAUTH`.
