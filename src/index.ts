@@ -1,6 +1,7 @@
 export { METEORA_DLMM_MAINNET_URL, METEORA_DLMM_DEVNET_URL, DEFAULT_TIMEOUT_MS } from './constants';
 export { MeteoraDlmmClient } from './client';
 export { MeteoraApiError } from './errors';
+export { getNetDeposits } from './position';
 export type {
 	GetOhlcvParams,
 	GetOpenPortfolioParams,

@@ -57,6 +57,28 @@ for (const candle of ohlcv.data) {
 }
 ```
 
+### `allTimeDeposits` is gross — use `getNetDeposits` for your real cost basis
+
+`pos.allTimeDeposits` and `pos.allTimeWithdrawals` are running **gross** totals of every
+event, summed independently. A deposit → withdraw → deposit cycle inflates both, so
+the gross `8.4 SOL deposited` is meaningless when you actually only have ~4.5 SOL at
+risk. `getNetDeposits` nets them (exact, no float rounding) into the same shape as
+`allTimeDeposits`:
+
+```typescript
+import { MeteoraDlmmClient, getNetDeposits } from 'metter';
+
+const pnl = await client.getPositionPnl(poolAddress, { user: wallet, status: 'open' });
+const real = getNetDeposits(pnl.positions[0]);
+
+console.log(real.tokenY.amount); // net token actually at risk, e.g. '4.498975489' SOL
+console.log(real.total.usd);     // net USD cost basis
+```
+
+This is your true cost basis — the net capital committed. It is *not* the current
+composition of the position (the AMM may have rebalanced between tokenX/tokenY as
+price crossed your bins); read `pos.unrealizedPnl` for live balances.
+
 Responses are validated at runtime with Zod; the exported `OpenPortfolioSchema` (and friends) let you re-validate or parse API data yourself.
 
 ## Contributing
