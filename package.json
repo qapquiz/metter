@@ -1,6 +1,6 @@
 {
 	"name": "meteora-metter",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "Lightweight TypeScript client for the Meteora DLMM API, with Zod-validated responses",
 	"homepage": "https://github.com/qapquiz/metter#readme",
 	"bugs": {
